@@ -1,0 +1,11 @@
+# django files ignore
+*__pyc*
+
+# local .env
+.env
+
+# for local jobs file
+deleteme
+
+# migrations
+*/migrations

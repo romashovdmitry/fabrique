@@ -1,0 +1,56 @@
+version: "3.8"
+
+services:
+    django_test_case:
+        build: .
+        container_name: django_test_case
+        command: > 
+            sh -c "python manage.py makemigrations &&
+                   python manage.py makemigrations api &&
+                   python manage.py migrate &&
+                   python manage.py runserver 0.0.0.0:8000"
+        volumes:
+            - .:/usr/src/app
+        ports: 
+            - "8000:8000"
+        depends_on:
+            - test_case_db
+            - test_case_redis
+    test_case_db:
+        image: postgres
+        container_name: test_case_db
+        environment:
+        - POSTGRES_DB=${DB_NAME}
+        - POSTGRES_USER=${DB_USER}
+        - POSTGRES_PASSWORD=${DB_PASSWORD}
+        expose:
+          - '5432'
+        ports:
+          - '5105:5432'
+    test_case_redis:  
+        image: redis
+        container_name: test_case_redis
+        ports:
+        - "6379"
+        restart: always
+    smtp-server:
+        image: mailhog/mailhog
+        expose:
+            - 1025
+            - 8025
+        ports:
+            - '1025:1025'
+            - '8025:8025'
+    celery:
+        build: .
+        command: celery -A fabrique_test_case worker -l INFO
+        volumes:
+            - .:/usr/src/app
+        environment:
+            - DEBUG=1
+            - DJANGO_ALLOWED_HOSTS=localhost 127.0.0.1 [::1]
+            - CELERY_BROKER=redis://test_case_redis:6379/0
+            - CELERY_BACKEND=redis://test_case_redis:6379/0
+        depends_on:
+            - django_test_case
+            - test_case_redis
